@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -7,23 +7,88 @@
   <meta name="description" content="Stick Arena Classic - Play now">
   <meta name="keywords" content="Stick,Arena,XGEN,XGENStudios,MMO,MMORPG,Browser,Game">
   <title>BallistickEMU - Play</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #a1caff;
+      font-family: Tahoma, sans-serif;
+    }
+    #wrap {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 200px;
+      margin: 0 auto;
+      width: 550px;
+      text-align: center;
+    }
+    #game-container {
+      width: 550px;
+      height: 400px;
+      margin: 0 auto;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #6a8ab8;
+    }
+    #status.error { color: #f87171; }
+  </style>
 </head>
 
-<script>
-  function rnd(min, max) {
-    return Math.floor(Math.random() * (max - min) + min);
-  }
-  function avoidSWFCache() {
-    var game = document.getElementById("game");
-    game.setAttribute("src", game.src + "?rnd=" + rnd(0, 999999));
-  }
-</script>
-
-<body bgcolor="black" onload="avoidSWFCache();">
-  <div style="position:absolute;left:0;right:0;margin:0 auto; width:550px;height:400px;top:200px;">
-    <embed id="game" src="game.swf" width="550" height="400" type="application/x-shockwave-flash"
-      pluginspage="http://www.macromedia.com/go/getflashplayer" />
+<body>
+  <div id="wrap">
+    <div id="game-container"></div>
+    <p id="status">Loading Ruffle…</p>
   </div>
+
+  <script>
+    function rnd(min, max) {
+      return Math.floor(Math.random() * (max - min) + min);
+    }
+
+    // WebSocket proxies (run: npm run proxy) tunnel Flash sockets to the TCP game server.
+    window.RufflePlayer = window.RufflePlayer || {};
+    window.RufflePlayer.config = {
+      autoplay: 'on',
+      unmuteOverlay: 'hidden',
+      letterbox: 'off',
+      allowScriptAccess: true,
+      warnOnUnsupportedContent: false,
+      socketProxy: [
+        { host: '127.0.0.1', port: 1138, proxyUrl: 'ws://127.0.0.1:8438' },
+        { host: '127.0.0.1', port: 1139, proxyUrl: 'ws://127.0.0.1:8439' },
+        { host: 'localhost', port: 1138, proxyUrl: 'ws://127.0.0.1:8438' },
+        { host: 'localhost', port: 1139, proxyUrl: 'ws://127.0.0.1:8439' },
+      ],
+    };
+  </script>
+  <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+  <script>
+    (async function () {
+      const status = document.getElementById('status');
+      const container = document.getElementById('game-container');
+
+      try {
+        const ruffle = window.RufflePlayer.newest();
+        const player = ruffle.createPlayer();
+        player.id = 'game';
+        player.style.width = '550px';
+        player.style.height = '400px';
+        container.appendChild(player);
+
+        const swfUrl = 'game.swf?rnd=' + rnd(0, 999999);
+        await player.load(swfUrl);
+        status.textContent = 'Connected via Ruffle — ensure game server (npm start) and proxy (npm run proxy) are running.';
+      } catch (err) {
+        status.textContent = 'Failed to load game.swf — place game.swf in htdocs/ and refresh.';
+        status.className = 'error';
+        console.error(err);
+      }
+    })();
+  </script>
 </body>
 
 </html>
